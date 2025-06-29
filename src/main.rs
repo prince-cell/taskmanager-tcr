@@ -154,6 +154,7 @@ fn run_app(
                                 }
                             } else {
                                 println!("Tests failed, not committing.");
+                                let _ = Command::new("git").args(["restore", "."]).status();
                             }
                             println!("Press Enter to return to UI...");
                             let _ = io::stdin().read_line(&mut String::new());
