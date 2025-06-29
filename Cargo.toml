@@ -1,6 +1,6 @@
 [package]
 name = "tasksmanager"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 authors = ["Prince Riwa"]
 description = "A TUI task manager with Git and TCR integration"
