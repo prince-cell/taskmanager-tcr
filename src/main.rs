@@ -53,7 +53,7 @@ fn run_app(
     let mut selected = 0;
     let mut mode = "view"; // or "input" or "edit" or "test"
     let mut input = String::new();
-    let mut test_command = String::from("cargo test");
+    let mut test_command = String::from(" ");
 
     loop {
         terminal.draw(|f| {
@@ -68,8 +68,8 @@ fn run_app(
 
             let task_items: Vec<ListItem> = tasks.iter().enumerate().map(|(i, task)| {
                 let prefix = match task.status.as_str() {
-                    "done" => "[x]",
-                    "working" => "[~]",
+                    "done" => "[done]",
+                    "working" => "[working]",
                     _ => "[ ]",
                 };
                 let line = format!("{} {}", prefix, task.description);
