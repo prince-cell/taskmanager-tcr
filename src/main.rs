@@ -14,7 +14,7 @@ use tui::text::Spans;
 use tui::widgets::{Block, Borders, List, ListItem, Paragraph};
 use tui::{Terminal, backend::CrosstermBackend};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 enum Status {
     Pending,
     Working,
@@ -275,15 +275,44 @@ fn load_tasks() -> Vec<Task> {
 }
 
 fn save_tasks(tasks: &[Task]) {
-    let mut content = String::from("# Tasks\n");
-    for task in tasks {
-        let prefix = match task.status {
-            Status::Done => "- [x]",
-            Status::Working => "- [~]",
-            Status::Pending => "- [ ]",
-        };
-        content.push_str(&format!("{} {}\n", prefix, task.description));
+    let mut content = String::from("# 📋 Task List\n\n");
+
+    // 🚧 Working
+    let working: Vec<_> = tasks
+        .iter()
+        .filter(|t| t.status == Status::Working)
+        .collect();
+    if !working.is_empty() {
+        content.push_str("## 🚧 Working\n");
+        for task in working {
+            content.push_str(&format!("- [~] {}\n", task.description));
+        }
+        content.push('\n');
     }
+
+    // 📋 Pending
+    let pending: Vec<_> = tasks
+        .iter()
+        .filter(|t| t.status == Status::Pending)
+        .collect();
+    if !pending.is_empty() {
+        content.push_str("## 📋 Pending\n");
+        for task in pending {
+            content.push_str(&format!("- [ ] {}\n", task.description));
+        }
+        content.push('\n');
+    }
+
+    // ✅ Done
+    let done: Vec<_> = tasks.iter().filter(|t| t.status == Status::Done).collect();
+    if !done.is_empty() {
+        content.push_str("## ✅ Done\n");
+        for task in done {
+            content.push_str(&format!("- [x] {}\n", task.description));
+        }
+        content.push('\n');
+    }
+
     fs::write(TASKS_FILE, content).expect("Failed to write file");
 }
 
