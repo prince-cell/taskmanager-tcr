@@ -15,11 +15,30 @@ use tui::widgets::{Block, Borders, List, ListItem, Paragraph};
 use tui::{Terminal, backend::CrosstermBackend};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct Task {
-    description: String,
-    status: String, // "pending", "done", "working"
+enum Status {
+    Pending,
+    Working,
+    Done,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Task {
+    description: String,
+    status: Status,
+}
+
+impl Task {
+    fn new(description: String) -> Option<Self> {
+        if description.trim().is_empty() {
+            None
+        } else {
+            Some(Task {
+                description,
+                status: Status::Pending,
+            })
+        }
+    }
+}
 const TASKS_FILE: &str = "tasks.md";
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -67,10 +86,10 @@ fn run_app(
                 .split(f.size());
 
             let task_items: Vec<ListItem> = tasks.iter().enumerate().map(|(i, task)| {
-                let prefix = match task.status.as_str() {
-                    "done" => "[done]",
-                    "working" => "[working]",
-                    _ => "[ ]",
+                let prefix = match task.status {
+                    Status::Done => "[done]",
+                    Status::Working => "[working]",
+                    Status::Pending => "[ ]",
                 };
                 let line = format!("{} {}", prefix, task.description);
                 if i == selected {
@@ -165,10 +184,10 @@ fn run_app(
                         }
                         KeyCode::Enter => {
                             if let Some(task) = tasks.get_mut(selected) {
-                                task.status = match task.status.as_str() {
-                                    "pending" => "done".to_string(),
-                                    "done" => "working".to_string(),
-                                    _ => "pending".to_string(),
+                                task.status = match task.status {
+                                    Status::Pending => Status::Done,
+                                    Status::Done => Status::Working,
+                                    Status::Working => Status::Pending,
                                 };
                                 save_tasks(&tasks);
                             }
@@ -180,14 +199,12 @@ fn run_app(
                     },
                     "input" => match key.code {
                         KeyCode::Enter => {
-                            if !input.trim().is_empty() {
-                                tasks.push(Task {
-                                    description: input.drain(..).collect(),
-                                    status: "pending".to_string(),
-                                });
+                            if let Some(task) = Task::new(input.drain(..).collect()) {
+                                tasks.push(task);
                                 save_tasks(&tasks);
+                            } else {
+                                println!("⚠️ Task description cannot be empty.");
                             }
-                            mode = "view";
                         }
                         KeyCode::Esc => mode = "view",
                         KeyCode::Char(c) => input.push(c),
@@ -199,10 +216,13 @@ fn run_app(
                     "edit" => match key.code {
                         KeyCode::Enter => {
                             if let Some(task) = tasks.get_mut(selected) {
-                                task.description = input.drain(..).collect();
-                                save_tasks(&tasks);
+                                if let Some(updated) = Task::new(input.drain(..).collect()) {
+                                    *task = updated;
+                                    save_tasks(&tasks);
+                                } else {
+                                    println!("⚠️ Updated description cannot be empty.");
+                                }
                             }
-                            mode = "view";
                         }
                         KeyCode::Esc => mode = "view",
                         KeyCode::Char(c) => input.push(c),
@@ -239,16 +259,16 @@ fn load_tasks() -> Vec<Task> {
         .filter(|line| line.trim().starts_with("- ["))
         .map(|line| {
             let status = if line.contains("- [x]") {
-                "done"
+                Status::Done
             } else if line.contains("- [~]") {
-                "working"
+                Status::Working
             } else {
-                "pending"
+                Status::Pending
             };
             let desc = line[5..].trim().to_string();
             Task {
                 description: desc,
-                status: status.to_string(),
+                status,
             }
         })
         .collect()
@@ -257,10 +277,10 @@ fn load_tasks() -> Vec<Task> {
 fn save_tasks(tasks: &[Task]) {
     let mut content = String::from("# Tasks\n");
     for task in tasks {
-        let prefix = match task.status.as_str() {
-            "done" => "- [x]",
-            "working" => "- [~]",
-            _ => "- [ ]",
+        let prefix = match task.status {
+            Status::Done => "- [x]",
+            Status::Working => "- [~]",
+            Status::Pending => "- [ ]",
         };
         content.push_str(&format!("{} {}\n", prefix, task.description));
     }
